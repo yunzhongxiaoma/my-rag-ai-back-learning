@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 */
 @Service
 public class SensitiveWordServiceImpl extends ServiceImpl<SensitiveWordMapper, SensitiveWord>
-    implements SensitiveWordService{
+    implements SensitiveWordService {
 
 }
 

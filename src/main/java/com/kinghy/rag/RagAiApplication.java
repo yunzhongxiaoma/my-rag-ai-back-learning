@@ -6,10 +6,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableScheduling
-public class KinghyRagAiApplication {
+public class RagAiApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(KinghyRagAiApplication.class, args);
+        SpringApplication.run(RagAiApplication.class, args);
     }
 
 }

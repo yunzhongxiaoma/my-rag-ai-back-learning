@@ -18,7 +18,7 @@ public class SearchUtils {
     // 搜索引擎
     private String baseUrl = "https://api.tavily.com/search";
     private String apiKey;
-    @Value("${kinghy.websearch.api-key}")
+    @Value("${spring.ai.websearch.api-key}")
     private void readApiKey(String key) {
         this.apiKey = key;
     }

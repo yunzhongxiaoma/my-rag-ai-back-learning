@@ -4,8 +4,6 @@ import com.kinghy.rag.common.BaseResponse;
 import com.kinghy.rag.entity.AliOssFile;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.kinghy.rag.pojo.dto.QueryFileDTO;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 
 import java.util.List;
 

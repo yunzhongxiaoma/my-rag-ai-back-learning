@@ -1,36 +1,152 @@
-# 使用Spring Ai Alibaba 接入通义大模型
+# RAG AI 后端学习项目
 
-#### 技术栈
+> 本仓库是基于 [kinghy-rag-ai-back](https://github.com/kinghy949/kinghy-rag-ai-back) 的复刻学习实践仓库，非原项目作者，仅用于个人技术学习和架构分析。
 
-- Spring Boot: 3.4.2
-- JDK: 17 
-- spring-ai: 1.0.0-M5 
-- spring-ai-alibaba: 1.0.0-M5.1 
-- maven: 3.9.9
-- PostgreSQL 16.6
-- vector-0.7.2(PostgreSQL的向量存储扩展)
-- LLM使用的通义千问
-- 对象存储使用阿里云OSS
+## 📋 项目简介
 
+基于Spring AI构建的RAG（检索增强生成）智能问答系统后端，主要特色是将原项目的PostgreSQL向量存储方案迁移至Milvus向量数据库，提升向量检索性能和系统扩展性。
 
+## 🛠️ 技术栈
 
-## 1. 准备工作
-### 1.1 准备PostgreSQL数据库并安装好vector-0.7.2扩展后
-1. 创建一个数据库，并执行resources/sql/init.sql
-2. PostgreSQL及vector-0.7.2下载安装教程参考文章：https://blog.csdn.net/typeracer/article/details/140711057
+### 核心框架
+- **Spring Boot**: 3.4.2
+- **JDK**: 17
+- **Maven**: 3.9.9
+- **Spring AI**: 1.0.0
+- **Spring AI Alibaba**: 1.0.0.1
 
-### 1.2 准备阿里云OSS
-创建一个OSS Bucket,要求与yml文件中配置的bucket名称相同。
+### 数据存储
+- **MySQL**: 8.0+ (业务数据存储)
+- **Milvus**: 2.5+ (向量数据库，替代原PostgreSQL+vector方案)
+- **Redis**: 6.0+ (缓存服务)
+- **阿里云OSS**: 对象存储服务
 
-### 1.3 准备通义千问模型
-1. 登录通义千问官网，创建模型。
-2. 申请apikey并配置到yml文件中。
+### AI服务
+- **阿里云通义千问**: 大语言模型服务
+- **文档解析**: Apache Tika, PDF处理
+- **中文分词**: IK Analyzer
 
+## 🚀 快速开始
 
+### 1. 环境准备
 
+#### 1.1 基础环境
+- JDK 17+
+- Maven 3.9+
+- Docker & Docker Compose（推荐）
 
+#### 1.2 启动数据库服务
+```bash
+# 启动Milvus和相关服务
+docker-compose -f docs/05-部署与启动/docker-milvus-attu-compose.yml up -d
 
+# 检查服务状态
+docker-compose -f docs/05-部署与启动/docker-milvus-attu-compose.yml ps
+```
 
+#### 1.3 初始化MySQL数据库
+```bash
+# 创建数据库
+mysql -u root -p -e "CREATE DATABASE my_rag CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
+# 执行初始化脚本
+mysql -u root -p my_rag < src/main/resources/sql/init.sql
+```
 
+### 2. 配置设置
 
+#### 2.1 阿里云服务配置
+1. **通义千问API**: 
+   - 访问 [DashScope控制台](https://dashscope.console.aliyun.com/)
+   - 创建API Key并设置环境变量 `DASHSCOPE_API_KEY`
+
+2. **阿里云OSS**:
+   - 创建OSS Bucket
+   - 配置Access Key和Secret Key
+
+#### 2.2 配置文件
+根据你的环境修改 `src/main/resources/application-dev.yml`：
+```yaml
+spring:
+  ai:
+    dashscope:
+      api-key: your_actual_api_key_here
+  
+  datasource:
+    password: your_db_password
+    
+aliyun:
+  alioss:
+    access-key-id: your_oss_access_key_id
+    access-key-secret: your_oss_access_key_secret
+```
+
+### 3. 启动应用
+```bash
+# 开发环境启动
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
+
+# 或使用提供的启动脚本（Windows）
+start-dev.bat
+```
+
+### 4. 验证部署
+- **应用健康检查**: http://localhost:8989/actuator/health
+- **Attu管理界面**: http://localhost:3000 (Milvus可视化管理)
+- **默认登录账户**: admin/admin
+
+## 📚 项目文档
+
+完整的企业级项目文档位于 `docs/` 目录：
+
+- [📋 需求分析](docs/01-需求分析/需求分析.md)
+- [🏗️ 架构设计](docs/02-架构设计/架构设计.md)
+- [📐 详细设计](docs/03-详细设计/详细设计.md)
+- [🧪 测试方案](docs/04-测试方案/测试方案.md)
+- [🚀 部署与启动](docs/05-部署与启动/部署与启动.md)
+- [📊 监控与运维](docs/06-监控与运维/监控与运维.md)
+
+### 专项文档
+- [数据库初始化指南](docs/数据库初始化指南.md)
+- [配置文件说明](docs/配置文件说明.md)
+- [JWT问题解决方案](docs/JWT问题解决方案.md)
+
+## 🔄 主要改进
+
+### 向量数据库迁移
+- **原方案**: PostgreSQL + pgvector扩展
+- **新方案**: Milvus专业向量数据库
+- **优势**: 更好的向量检索性能、更强的扩展性、专业的向量索引
+
+### 系统架构优化
+- 完善的JWT认证机制
+- 统一的HTTP客户端和错误处理
+- 企业级的配置管理和环境隔离
+- 完整的监控和日志体系
+
+## 🤝 贡献指南
+
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
+
+## ⚠️ 免责声明
+
+- 本项目仅用于学习和技术研究目的
+- 不涉及商业化应用
+- 请遵守相关API服务的使用条款
+- 原项目协议未明确，本项目不声明特定开源协议
+
+## 📞 联系方式
+
+如有问题或建议，请通过以下方式联系：
+- 提交 [GitHub Issues](../../issues)
+- 技术交流和学习讨论
+
+---
+
+**最后更新**: 2024-01-07  
+**项目状态**: 开发中  
+**学习目的**: RAG架构实践、向量数据库应用、Spring AI生态

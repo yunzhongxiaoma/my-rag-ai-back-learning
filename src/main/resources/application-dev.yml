@@ -1,10 +1,77 @@
-kinghy:
-  alioss:
-    endpoint: oss-cn-beijing.aliyuncs.com
-    access-key-id:
-    access-key-secret:
-    bucket-name: kinghy-rag
-  dashscope:
-    api-key:
-  websearch:
-    api-key:
+# 开发环境配置
+# 主要依赖环境变量，这里只配置开发环境特有的设置
+
+# 开发环境日志配置
+logging:
+  level:
+    com.kinghy.rag: DEBUG
+    org.springframework.ai: DEBUG
+    org.springframework.ai.chat.client.advisor: DEBUG
+  file:
+    name: logs/application-dev.log
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# 开发环境特定配置
+spring:
+  # 数据源配置
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driverClassName: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/my_rag?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
+    username: root
+    password:
+
+  ai:
+    websearch:
+      api-key:
+      searxng:
+        url: "http://127.0.0.1:8080/search"
+        nums: 10
+        engines: "duckduckgo,google,bing,brave,mojeek,presearch,qwant,startpage,yahoo,arxiv,crossref,google_scholar,internetarchivescholar,semantic_scholar"
+    dashscope:
+      api-key: ${DASHSCOPE_API_KEY}
+
+    vectorstore:
+      milvus:
+        client:
+          host: "192.168.130.131" # default: localhost
+          port: 19530 # default: 19530
+          username: "" # default: root
+          password: "" # default: milvus
+        databaseName: "default"
+        collectionName: "vector_store" # default: vector_store
+        embeddingDimension: 1536 # default: 1536
+        indexType: IVF_FLAT # default: IVF_FLAT
+        metricType: COSINE # default: COSINE
+        initializeSchema: true # 自动创建集合
+  data:
+    redis:
+      host: 192.168.130.131   # 地址
+      port: 6379              # Redis 服务器端口，默认为 6379
+      #      password:               # Redis 密码，默认为空
+      timeout: 5000ms         # 连接超时时间
+      lettuce:
+        pool:
+          max-active: 8       # 最大连接数
+          max-idle: 4         # 最大空闲连接数
+          min-idle: 1         # 最小空闲连接数
+          max-wait: 2000ms
+  aliyun:
+    alioss:
+      endpoint: oss-cn-beijing.aliyuncs.com
+      access-key-id: ${ALIOSS_ACCESS_KEY_ID}
+      access-key-secret: ${ALIOSS_ACCESS_KEY_SECRET}
+      bucket-name: my-rag
+
+  # 开发环境可以启用更详细的错误信息
+  web:
+    resources:
+      add-mappings: true
+
+# 开发环境可以开启更多调试信息
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
