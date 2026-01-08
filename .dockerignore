@@ -1,0 +1,56 @@
+# Docker构建忽略文件
+# 减少构建上下文大小，提高构建速度
+
+# Git相关
+.git
+.gitignore
+
+# IDE相关
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# 构建产物
+target/
+*.jar
+*.war
+*.ear
+
+# 日志文件
+logs/
+*.log
+
+# 临时文件
+temp/
+tmp/
+*.tmp
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# 文档
+docs/
+README.md
+*.md
+
+# 配置文件（敏感信息）
+.env
+.env.local
+src/main/resources/application-dev.yml
+src/main/resources/application-local.yml
+
+# Docker相关
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# 测试相关
+src/test/
+
+# Maven相关
+.mvn/
+mvnw
+mvnw.cmd
