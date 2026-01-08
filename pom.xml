@@ -49,6 +49,7 @@
         <ik-analyzer.version>8.5.0</ik-analyzer.version>
         <mysql.version>8.0.28</mysql.version>
         <druid.version>1.2.3</druid.version>
+        <knife4j.version>4.1.0</knife4j.version>
     </properties>
     <dependencies>
         <dependency>
@@ -175,6 +176,12 @@
             <artifactId>spring-ai-starter-vector-store-milvus</artifactId>
         </dependency>
 
+        <!--Swagger - 根据官方兼容性表格使用正确版本-->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.7.0</version>
+        </dependency>
     </dependencies>
 
 

@@ -26,6 +26,7 @@ import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -59,7 +60,7 @@ public class KnowledgeController {
      * @return
      * @throws IOException
      */
-
+    @Transactional
     @Operation(summary = "upload", description = "上传附件接口")
     @PostMapping(value = "file/upload", headers = "content-type=multipart/form-data")
     public BaseResponse upload(@RequestParam("file") List<MultipartFile> files) {

@@ -20,3 +20,20 @@ kinghy:
     user-secret-key: kinghy
     user-ttl: 7200000
     user-token-name: Authorization
+
+# SpringDoc配置
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+  packages-to-scan: com.kinghy.rag.controller
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.kinghy.rag: DEBUG
+    org.springframework.ai.chat.client.advisor: debug

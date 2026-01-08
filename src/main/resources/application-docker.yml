@@ -1,0 +1,52 @@
+# Docker环境配置
+spring:
+  # 数据源配置 - 使用Docker容器内的服务名
+  datasource:
+    url: jdbc:mysql://mysql:3306/my_rag?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:root123}
+
+  # Redis配置
+  data:
+    redis:
+      host: redis
+      port: 6379
+      password: ${REDIS_PASSWORD:}
+
+  # AI配置
+  ai:
+    vectorstore:
+      milvus:
+        client:
+          host: milvus-standalone
+          port: 19530
+
+# 阿里云OSS配置
+aliyun:
+  alioss:
+    endpoint: ${ALIOSS_ENDPOINT:oss-cn-shenzhen.aliyuncs.com}
+    access-key-id: ${ALIOSS_ACCESS_KEY_ID}
+    access-key-secret: ${ALIOSS_ACCESS_KEY_SECRET}
+    bucket-name: ${ALIOSS_BUCKET_NAME:my-rag}
+
+# Docker环境日志配置
+logging:
+  level:
+    com.kinghy.rag: INFO
+    org.springframework.ai: INFO
+  file:
+    name: /app/logs/application.log
+  logback:
+    rollingpolicy:
+      max-file-size: 100MB
+      max-history: 7
+
+# 监控配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always

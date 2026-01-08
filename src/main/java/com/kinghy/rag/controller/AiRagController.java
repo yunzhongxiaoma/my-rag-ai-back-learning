@@ -34,6 +34,7 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -73,7 +74,7 @@ public class AiRagController {
     }
 
     @Operation(summary = "rag", description = "Rag对话接口")
-    @GetMapping(value = "/rag")
+    @GetMapping(value = "/rag", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Loggable
     public Flux<String> generate(@RequestParam(value = "message", defaultValue = "你好") String message) throws IOException {
 

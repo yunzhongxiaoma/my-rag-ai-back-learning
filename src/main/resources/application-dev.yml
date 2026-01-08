@@ -57,12 +57,12 @@ spring:
           max-idle: 4         # 最大空闲连接数
           min-idle: 1         # 最小空闲连接数
           max-wait: 2000ms
-  aliyun:
-    alioss:
-      endpoint: oss-cn-beijing.aliyuncs.com
-      access-key-id: ${ALIOSS_ACCESS_KEY_ID}
-      access-key-secret: ${ALIOSS_ACCESS_KEY_SECRET}
-      bucket-name: my-rag
+aliyun:
+  alioss:
+    endpoint: oss-cn-beijing.aliyuncs.com
+    access-key-id: ${ALIOSS_ACCESS_KEY_ID}
+    access-key-secret: ${ALIOSS_ACCESS_KEY_SECRET}
+    bucket-name: my-rag
 
   # 开发环境可以启用更详细的错误信息
   web:

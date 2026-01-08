@@ -50,6 +50,16 @@ public class ApplicationConfig implements WebMvcConfigurer {
                 .addPathPatterns("/**") // 拦截所有请求
                 .excludePathPatterns(ApplicationConstant.API_VERSION+"/user/login") // 排除用户登录接口拦截所有请求
                 .excludePathPatterns(ApplicationConstant.API_VERSION+"/user/register") // 排除用户注册接口
-                .excludePathPatterns("/doc.html", "/webjars/**", "/swagger-resources/**", "/v3/api-docs/**"); // 排除Swagger相关路径
+                .excludePathPatterns(ApplicationConstant.API_VERSION+"/test/**") // 排除测试接口
+                .excludePathPatterns("/error") // 排除错误页面
+                .excludePathPatterns("/doc.html", "/webjars/**", "/swagger-resources/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html"); // 排除Swagger相关路径
+    }
+
+    /**
+     * 配置HTTP消息转换器，确保UTF-8编码
+     */
+    @Override
+    public void configureMessageConverters(List<org.springframework.http.converter.HttpMessageConverter<?>> converters) {
+        converters.add(0, new org.springframework.http.converter.StringHttpMessageConverter(java.nio.charset.StandardCharsets.UTF_8));
     }
 }
