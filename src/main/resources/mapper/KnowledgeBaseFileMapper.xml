@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kinghy.rag.mapper.KnowledgeBaseFileMapper">
+
+    <resultMap id="BaseResultMap" type="com.kinghy.rag.entity.KnowledgeBaseFile">
+        <id property="id" column="id" />
+        <result property="knowledgeBaseId" column="knowledge_base_id" />
+        <result property="fileName" column="file_name" />
+        <result property="originalName" column="original_name" />
+        <result property="fileUrl" column="file_url" />
+        <result property="fileSize" column="file_size" />
+        <result property="fileType" column="file_type" />
+        <result property="vectorIds" column="vector_ids" />
+        <result property="uploadUserId" column="upload_user_id" />
+        <result property="createTime" column="create_time" />
+        <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, knowledge_base_id, file_name, original_name, file_url, 
+        file_size, file_type, vector_ids, upload_user_id, create_time, update_time
+    </sql>
+
+    <!-- 根据知识库ID查询文件列表 -->
+    <select id="selectByKnowledgeBaseId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM tb_knowledge_base_file
+        WHERE knowledge_base_id = #{knowledgeBaseId}
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据知识库ID删除所有文件 -->
+    <delete id="deleteByKnowledgeBaseId">
+        DELETE FROM tb_knowledge_base_file
+        WHERE knowledge_base_id = #{knowledgeBaseId}
+    </delete>
+
+    <!-- 统计知识库文件数量 -->
+    <select id="countByKnowledgeBaseId" resultType="int">
+        SELECT COUNT(*)
+        FROM tb_knowledge_base_file
+        WHERE knowledge_base_id = #{knowledgeBaseId}
+    </select>
+
+    <!-- 根据用户ID和文件ID查询文件（用于权限验证） -->
+    <select id="selectByIdAndUserId" resultMap="BaseResultMap">
+        SELECT f.<include refid="Base_Column_List" />
+        FROM tb_knowledge_base_file f
+        INNER JOIN tb_knowledge_base kb ON f.knowledge_base_id = kb.id
+        WHERE f.id = #{fileId}
+          AND (kb.type = 'PUBLIC' OR (kb.type = 'PERSONAL' AND kb.creator_id = #{userId}))
+    </select>
+
+</mapper>

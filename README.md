@@ -1,5 +1,5 @@
 # RAG AI 后端学习项目
-
+11
 > 本仓库是基于 [kinghy-rag-ai-back](https://github.com/kinghy949/kinghy-rag-ai-back) 的复刻学习实践仓库，非原项目作者，仅用于个人技术学习和架构分析。
 
 ## 📋 项目简介
@@ -25,6 +25,14 @@
 - **阿里云通义千问**: 大语言模型服务
 - **文档解析**: Apache Tika, PDF处理
 - **中文分词**: IK Analyzer
+
+## 系统截图
+### 登录界面
+![](./docs/images/2026-01-10_sHNoxx.png)
+
+### 知识库管理
+![](./docs/images/2026-01-10_waKdH8.png)
+
 
 ## 🚀 快速开始
 

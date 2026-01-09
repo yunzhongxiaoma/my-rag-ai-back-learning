@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kinghy.rag.mapper.KnowledgeBaseMapper">
+
+    <resultMap id="BaseResultMap" type="com.kinghy.rag.entity.KnowledgeBase">
+        <id property="id" column="id" />
+        <result property="name" column="name" />
+        <result property="displayName" column="display_name" />
+        <result property="type" column="type" />
+        <result property="creatorId" column="creator_id" />
+        <result property="description" column="description" />
+        <result property="fileCount" column="file_count" />
+        <result property="vectorCollectionName" column="vector_collection_name" />
+        <result property="createTime" column="create_time" />
+        <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, name, display_name, type, creator_id, description, 
+        file_count, vector_collection_name, create_time, update_time
+    </sql>
+
+    <!-- 根据用户ID和知识库类型查询知识库列表 -->
+    <select id="selectByUserIdAndType" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM tb_knowledge_base
+        WHERE creator_id = #{userId}
+        <if test="type != null">
+            AND type = #{type}
+        </if>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 查询用户可访问的知识库列表（个人知识库 + 公共知识库） -->
+    <select id="selectAccessibleByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM tb_knowledge_base
+        WHERE type = 'PUBLIC' 
+           OR (type = 'PERSONAL' AND creator_id = #{userId})
+        ORDER BY type ASC, create_time DESC
+    </select>
+
+    <!-- 根据关键词搜索用户可访问的知识库 -->
+    <select id="searchAccessibleByKeyword" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM tb_knowledge_base
+        WHERE (type = 'PUBLIC' OR (type = 'PERSONAL' AND creator_id = #{userId}))
+          AND (display_name LIKE CONCAT('%', #{keyword}, '%') 
+               OR description LIKE CONCAT('%', #{keyword}, '%'))
+        ORDER BY type ASC, create_time DESC
+    </select>
+
+    <!-- 更新知识库文件数量 -->
+    <update id="updateFileCount">
+        UPDATE tb_knowledge_base 
+        SET file_count = file_count + #{increment},
+            update_time = NOW()
+        WHERE id = #{knowledgeBaseId}
+    </update>
+
+    <!-- 修复所有知识库的文件计数 -->
+    <update id="fixAllFileCount">
+        UPDATE tb_knowledge_base kb
+        SET file_count = (
+            SELECT COUNT(*)
+            FROM tb_knowledge_base_file kbf
+            WHERE kbf.knowledge_base_id = kb.id
+        ),
+        update_time = NOW()
+        WHERE EXISTS (
+            SELECT 1
+            FROM tb_knowledge_base_file kbf
+            WHERE kbf.knowledge_base_id = kb.id
+        )
+    </update>
+
+</mapper>

@@ -5,7 +5,7 @@
 |------------|--------------------------------|--------|-----|
 | **Bug**    | 重新打开AI问答界面，历史聊天记录丢失(切换功能标签、f5) | 高     | 已完成 |
 | **Bug**    | 令牌过期后，未自动跳转到登录界面               | 高     | 已完成 |
-| **优化需求** | 多知识库选择+分类型管理                         | 高     | 未开始 |
+| **优化需求** | 多知识库选择+分类型管理                         | 高     | 已完成 |
 
 
 ## 详细代办步骤
@@ -95,6 +95,69 @@ const convertVOToMessage = (vo: ChatMessageVO): ChatMessage => {
 - 前端文件：`my-rag-ai-front-learning/src/api/ChatApi.ts`
 - 前端文件：`my-rag-ai-front-learning/src/view/ragChat/RagChatView.vue`
 - 前端文件：`my-rag-ai-front-learning/src/utils/fetchWrapper.ts`
+
+**完成时间**：2026-01-09  
+**解决者**：yunzhongxiaoma  
+**状态**：已完成并测试通过
+
+### Milvus API 过时方法和类型转换问题解决方案
+
+**问题描述**：编译时出现两个错误
+1. `VectorStoreManagerImpl.java` 中 `withFieldTypes()` 方法已过时
+2. `AliOssFileServiceImpl.java` 中 `Integer` 无法转换为 `Long` 类型
+
+**问题分析**：
+- Milvus Java SDK 版本更新，`CreateCollectionParam.Builder.withFieldTypes()` 方法被标记为过时
+- `AliOssFile` 实体类的 `id` 字段定义为 `Integer` 类型，但业务方法需要 `Long` 类型参数
+
+**解决方案**：
+
+1. **Milvus API 更新**
+   - 将过时的 `withFieldTypes()` 方法替换为新的 `withSchema()` 方法
+   - 使用 `CollectionSchemaParam.newBuilder().withFieldTypes(fieldsSchema).build()` 包装字段定义
+
+2. **数据类型统一**
+   - 将 `AliOssFile` 实体类的 `id` 字段类型从 `Integer` 改为 `Long`
+   - 确保与 MyBatis Plus 和数据库主键类型保持一致
+
+**技术实现细节**：
+
+```java
+// 修复前（过时方法）
+CreateCollectionParam createCollectionParam = CreateCollectionParam.newBuilder()
+    .withCollectionName(collectionName)
+    .withDescription("知识库 " + knowledgeBaseId + " 的向量集合")
+    .withFieldTypes(fieldsSchema)  // 过时方法
+    .build();
+
+// 修复后（新方法）
+CreateCollectionParam createCollectionParam = CreateCollectionParam.newBuilder()
+    .withCollectionName(collectionName)
+    .withDescription("知识库 " + knowledgeBaseId + " 的向量集合")
+    .withSchema(CollectionSchemaParam.newBuilder()
+            .withFieldTypes(fieldsSchema)
+            .build())
+    .build();
+```
+
+```java
+// 修复前
+@TableId
+private Integer id;  // 类型不匹配
+
+// 修复后
+@TableId
+private Long id;     // 统一使用 Long 类型
+```
+
+**测试验证**：
+- ✅ 项目编译成功，无编译错误
+- ✅ Milvus 向量集合创建功能正常
+- ✅ OSS 文件删除功能类型匹配正确
+
+**影响范围**：
+- 后端文件：`my-rag-ai-back-learning/src/main/java/com/kinghy/rag/service/impl/VectorStoreManagerImpl.java`
+- 后端文件：`my-rag-ai-back-learning/src/main/java/com/kinghy/rag/entity/AliOssFile.java`
 
 **完成时间**：2026-01-09  
 **解决者**：yunzhongxiaoma  

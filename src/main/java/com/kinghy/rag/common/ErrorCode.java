@@ -17,7 +17,15 @@ public enum ErrorCode {
     MODEL_ERROR(50007,"模型为空"),
     DATABASE_ERROR(50009,"数据类型错误"),
     FILE_ERROR(50008,"请求文件为空"),
-    API_REQUEST_ERROR(50010, "接口调用失败");
+    API_REQUEST_ERROR(50010, "接口调用失败"),
+    
+    // 知识库相关错误码
+    KNOWLEDGE_BASE_NOT_FOUND(40401, "知识库不存在"),
+    KNOWLEDGE_BASE_NAME_EXISTS(40002, "知识库名称已存在"),
+    KNOWLEDGE_BASE_ACCESS_DENIED(40301, "无权限访问该知识库"),
+    KNOWLEDGE_BASE_FILE_NOT_FOUND(40402, "知识库文件不存在"),
+    KNOWLEDGE_BASE_DELETE_ERROR(50011, "知识库删除失败"),
+    VECTOR_STORE_ERROR(50012, "向量存储操作失败");
 
     /**
      * 状态码

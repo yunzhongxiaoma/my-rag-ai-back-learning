@@ -1,5 +1,6 @@
 package com.kinghy.rag.controller;
 
+import com.alibaba.fastjson2.JSON;
 import com.kinghy.rag.annotation.Loggable;
 import com.kinghy.rag.common.ApplicationConstant;
 import com.kinghy.rag.common.BaseResponse;
@@ -13,12 +14,15 @@ import com.kinghy.rag.pojo.vo.ChatMessageVO;
 import com.kinghy.rag.service.ChatMessageService;
 import com.kinghy.rag.service.ChatSessionService;
 import com.kinghy.rag.service.SensitiveWordService;
+import com.kinghy.rag.service.VectorStoreManager;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -26,7 +30,9 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -53,6 +59,9 @@ public class ChatController {
 
     @Autowired
     private ChatMessageService chatMessageService;
+
+    @Autowired
+    private VectorStoreManager vectorStoreManager;
 
     public ChatController(ChatClient.Builder builder, ChatMemory chatMemory) {
         this.chatClient = builder
@@ -116,13 +125,147 @@ public class ChatController {
                 });
     }
 
+    @Operation(summary = "streamRag", description = "基于知识库的流式RAG对话接口")
+    @GetMapping(value = "/stream/rag", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @Loggable("message")
+    public Flux<String> streamRagChatWithKnowledgeBases(
+            @RequestParam(value = "message", defaultValue = "你好") String message,
+            @RequestParam(value = "knowledgeBaseIds", required = false) List<Long> knowledgeBaseIds,
+            @RequestParam(value = "prompt", defaultValue = "你是一名基于知识库的AI助手，请根据提供的知识库内容回答问题。") String prompt,
+            @RequestParam(value = "sessionId", required = false) String sessionId) {
+        
+        log.info("基于知识库的流式RAG对话，知识库ID列表: {}, 消息: {}", knowledgeBaseIds, message);
+        
+        // 敏感词检查
+        List<SensitiveWord> list = sensitiveWordService.list();
+        for (SensitiveWord sensitiveWord : list) {
+            if (message.contains(sensitiveWord.getWord())) {
+                return Flux.just("包含敏感词:" + sensitiveWord.getWord());
+            }
+        }
+
+        Integer userId = BaseContext.getCurrentId().intValue();
+        
+        // 获取或创建会话
+        ChatSession currentSession = getCurrentOrCreateSession(userId, sessionId);
+        String activeSessionId = currentSession.getSessionId();
+        
+        // 保存用户消息
+        chatMessageService.saveUserMessage(activeSessionId, userId, message);
+        
+        // 如果没有指定知识库，使用普通对话
+        if (knowledgeBaseIds == null || knowledgeBaseIds.isEmpty()) {
+            log.info("未指定知识库，使用普通对话模式");
+            return streamRagChat(message, prompt, sessionId);
+        }
+        
+        // 生成AI响应并保存
+        StringBuilder responseBuilder = new StringBuilder();
+        
+        try {
+            // 在指定知识库中进行相似性搜索
+            SearchRequest searchRequest = SearchRequest.builder()
+                    .query(message)
+                    .similarityThreshold(0.1d)
+                    .topK(5)
+                    .build();
+            
+            List<Document> searchResults = vectorStoreManager.similaritySearch(knowledgeBaseIds, searchRequest);
+            
+            // 构建上下文信息
+            StringBuilder contextBuilder = new StringBuilder();
+            for (Document doc : searchResults) {
+                // 尝试获取文档内容，Spring AI Document 可能使用不同的方法名
+                String content = null;
+                try {
+                    // 尝试使用反射获取内容，或使用toString()作为备选
+                    content = doc.toString();
+                    // 如果toString()返回的是对象描述而不是内容，我们需要其他方法
+                    if (content != null && content.contains("Document{") && content.contains("content=")) {
+                        // 从toString()中提取内容
+                        int startIndex = content.indexOf("content=") + 8;
+                        int endIndex = content.indexOf(",", startIndex);
+                        if (endIndex == -1) {
+                            endIndex = content.indexOf("}", startIndex);
+                        }
+                        if (startIndex > 7 && endIndex > startIndex) {
+                            content = content.substring(startIndex, endIndex).trim();
+                            if (content.startsWith("'") && content.endsWith("'")) {
+                                content = content.substring(1, content.length() - 1);
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("获取文档内容失败: {}", e.getMessage());
+                    content = doc.toString();
+                }
+                
+                if (content != null && !content.trim().isEmpty()) {
+                    contextBuilder.append(content).append("\n\n");
+                }
+            }
+            String context = contextBuilder.toString();
+            
+            // 构建增强的提示词
+            String enhancedMessage = message;
+            if (!context.isEmpty()) {
+                enhancedMessage = String.format("""
+                        基于以下知识库内容回答问题：
+                        
+                        知识库内容：
+                        %s
+                        
+                        用户问题：%s
+                        
+                        请基于上述知识库内容回答用户问题。如果知识库内容无法回答问题，请说明并提供一般性建议。
+                        """, context, message);
+            }
+            
+            return chatClient.prompt()
+                    .system(prompt)
+                    .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, userId))
+                    .user(enhancedMessage)
+                    .stream()
+                    .content()
+                    .doOnNext(chunk -> {
+                        // 累积响应内容
+                        responseBuilder.append(chunk);
+                    })
+                    .doOnComplete(() -> {
+                        // 流式响应完成后，保存完整的AI响应
+                        String fullResponse = responseBuilder.toString();
+                        if (StringUtils.hasText(fullResponse)) {
+                            // 构建元数据，包含使用的知识库信息
+                            Map<String, Object> metadata = new HashMap<>();
+                            metadata.put("knowledgeBaseIds", knowledgeBaseIds);
+                            metadata.put("searchResultsCount", searchResults.size());
+                            metadata.put("hasContext", !context.isEmpty());
+                            
+                            chatMessageService.saveAssistantMessage(activeSessionId, userId, fullResponse, 
+                                    metadata.isEmpty() ? null : JSON.toJSONString(metadata));
+                            log.info("保存基于知识库的AI响应消息，会话ID: {}, 用户ID: {}, 知识库: {}, 响应长度: {}", 
+                                    activeSessionId, userId, knowledgeBaseIds, fullResponse.length());
+                        }
+                    })
+                    .doOnError(error -> {
+                        log.error("基于知识库的流式对话过程中发生错误，会话ID: {}, 用户ID: {}, 知识库: {}", 
+                                activeSessionId, userId, knowledgeBaseIds, error);
+                    });
+            
+        } catch (Exception e) {
+            log.error("基于知识库的RAG对话失败", e);
+            return Flux.just("抱歉，处理您的问题时出现了错误，请稍后重试。");
+        }
+    }
+
     /**
      * 发送消息并获取响应（非流式）
      */
     @PostMapping("/message")
     @Operation(summary = "发送消息", description = "发送消息并获取AI响应")
     public BaseResponse<ChatMessageVO> sendMessage(@RequestBody ChatMessageDTO messageDTO) {
-        log.info("发送消息，内容: {}, 会话ID: {}", messageDTO.getContent(), messageDTO.getSessionId());
+        log.info("发送消息，内容: {}, 会话ID: {}, 知识库: {}", 
+                messageDTO.getContent(), messageDTO.getSessionId(), messageDTO.getKnowledgeBaseIds());
         
         // 敏感词检查
         List<SensitiveWord> list = sensitiveWordService.list();
@@ -142,16 +285,107 @@ public class ChatController {
         ChatMessage userMessage = chatMessageService.saveUserMessage(activeSessionId, userId, messageDTO.getContent());
         
         try {
-            // 生成AI响应
-            String aiResponse = chatClient.prompt()
-                    .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, userId))
-                    .user(messageDTO.getContent())
-                    .call()
-                    .content();
+            String aiResponse;
+            Map<String, Object> responseMetadata = new HashMap<>();
+            
+            // 检查是否需要使用RAG
+            if (messageDTO.getKnowledgeBaseIds() != null && !messageDTO.getKnowledgeBaseIds().isEmpty()) {
+                // 使用RAG模式
+                log.info("使用RAG模式，知识库: {}", messageDTO.getKnowledgeBaseIds());
+                
+                // 在指定知识库中进行相似性搜索
+                SearchRequest searchRequest = SearchRequest.builder()
+                        .query(messageDTO.getContent())
+                        .similarityThreshold(0.1d)
+                        .topK(5)
+                        .build();
+                
+                List<Document> searchResults = vectorStoreManager.similaritySearch(
+                        messageDTO.getKnowledgeBaseIds(), searchRequest);
+                
+                // 构建上下文信息
+                StringBuilder contextBuilder = new StringBuilder();
+                for (Document doc : searchResults) {
+                    // 尝试获取文档内容
+                    String content = null;
+                    try {
+                        content = doc.toString();
+                        // 从toString()中提取内容
+                        if (content != null && content.contains("Document{") && content.contains("content=")) {
+                            int startIndex = content.indexOf("content=") + 8;
+                            int endIndex = content.indexOf(",", startIndex);
+                            if (endIndex == -1) {
+                                endIndex = content.indexOf("}", startIndex);
+                            }
+                            if (startIndex > 7 && endIndex > startIndex) {
+                                content = content.substring(startIndex, endIndex).trim();
+                                if (content.startsWith("'") && content.endsWith("'")) {
+                                    content = content.substring(1, content.length() - 1);
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.warn("获取文档内容失败: {}", e.getMessage());
+                        content = doc.toString();
+                    }
+                    
+                    if (content != null && !content.trim().isEmpty()) {
+                        contextBuilder.append(content).append("\n\n");
+                    }
+                }
+                String context = contextBuilder.toString();
+                
+                // 构建增强的提示词
+                String enhancedMessage = messageDTO.getContent();
+                if (!context.isEmpty()) {
+                    enhancedMessage = String.format("""
+                            基于以下知识库内容回答问题：
+                            
+                            知识库内容：
+                            %s
+                            
+                            用户问题：%s
+                            
+                            请基于上述知识库内容回答用户问题。如果知识库内容无法回答问题，请说明并提供一般性建议。
+                            """, context, messageDTO.getContent());
+                }
+                
+                // 使用系统提示词（如果提供）
+                String systemPrompt = messageDTO.getSystemPrompt() != null ? 
+                        messageDTO.getSystemPrompt() : 
+                        "你是一名基于知识库的AI助手，请根据提供的知识库内容回答问题。";
+                
+                // 生成AI响应
+                aiResponse = chatClient.prompt()
+                        .system(systemPrompt)
+                        .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, userId))
+                        .user(enhancedMessage)
+                        .call()
+                        .content();
+                
+                // 设置响应元数据
+                responseMetadata.put("knowledgeBaseIds", messageDTO.getKnowledgeBaseIds());
+                responseMetadata.put("searchResultsCount", searchResults.size());
+                responseMetadata.put("hasContext", !context.isEmpty());
+                responseMetadata.put("ragMode", true);
+                
+            } else {
+                // 使用普通对话模式
+                log.info("使用普通对话模式");
+                
+                aiResponse = chatClient.prompt()
+                        .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, userId))
+                        .user(messageDTO.getContent())
+                        .call()
+                        .content();
+                
+                responseMetadata.put("ragMode", false);
+            }
             
             // 保存AI响应
             ChatMessage assistantMessage = chatMessageService.saveAssistantMessage(
-                    activeSessionId, userId, aiResponse, null);
+                    activeSessionId, userId, aiResponse, 
+                    responseMetadata.isEmpty() ? null : JSON.toJSONString(responseMetadata));
             
             // 返回AI响应
             ChatMessageVO responseVO = convertToVO(assistantMessage);
