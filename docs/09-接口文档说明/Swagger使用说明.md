@@ -157,7 +157,7 @@ JWT拦截器已配置排除Swagger相关路径：
 
 ## 技术栈
 
-- **Knife4j**: 4.4.0 (Swagger增强UI)
+- **Knife4j**: 4.5.0 (Swagger增强UI)
 - **SpringDoc**: Spring Boot 3.x 兼容版本
 - **OpenAPI**: 3.0 规范
 - **JWT认证**: Bearer Token方式
