@@ -75,3 +75,22 @@ management:
     web:
       exposure:
         include: health,info,metrics
+
+# 聊天分页配置
+chat:
+  pagination:
+    default-message-page-size: 20
+    max-message-page-size: 100
+    default-session-page-size: 20
+    max-session-page-size: 50
+    default-recent-message-limit: 50
+    max-recent-message-limit: 200
+    session-preview-message-count: 3
+    enable-cursor-pagination: true
+    default-cursor-page-size: 20
+    max-cursor-page-size: 100
+  cleanup:
+    enabled: true
+    inactive-session-days: 30
+    message-retention-days: 90
+    archive-session-days: 60
